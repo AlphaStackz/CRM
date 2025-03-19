@@ -1,23 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useUser } from '../../context/UserContext';
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Container, Typography, Box } from '@mui/material';
-
 
 const Login = () => {
   const { login } = useUser();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
 
-
-
-
   const validate = () => {
     let tempErrors = {};
-    tempErrors.email = email ? '' : 'Email is required';
-    tempErrors.password = password ? '' : 'Password is required';
+    tempErrors.userName = userName ? '' : 'Username is required';
+    tempErrors.password =
+      password && password.length >= 6
+        ? ''
+        : 'Password must be at least 6 characters long';
     setErrors(tempErrors);
     return Object.values(tempErrors).every((x) => x === '');
   };
@@ -25,29 +24,50 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      console.log('Email:', email, 'Password:', password);
-
-      login({ name: email.split("@")[0], email });
-      navigate("/");
+      fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName, password }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Login failed. Please check your credentials.');
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log('Login successful:', data);
+          login({ name: userName, userName });
+          navigate('/');
+        })
+        .catch((error) => {
+          console.error(error.message);
+          setErrors({ general: error.message });
+        });
     }
   };
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="sm">
       <Box mt={8} p={3} boxShadow={3} borderRadius={2}>
         <Typography variant="h5" gutterBottom>
           Login
         </Typography>
+        {errors.general && (
+          <Typography color="error" variant="body2">
+            {errors.general}
+          </Typography>
+        )}
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Email"
+            label="Username"
             variant="outlined"
             fullWidth
             margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={!!errors.email}
-            helperText={errors.email}
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            error={!!errors.userName}
+            helperText={errors.userName}
           />
           <TextField
             label="Password"
@@ -63,10 +83,9 @@ const Login = () => {
           <Button
             type="submit"
             variant="contained"
-             color="primary"
-            
+            color="primary"
             fullWidth
-            sx={{ mt: 2 ,backgroundColor:'#e3f2fd',color:'black'}}
+            sx={{ mt: 2 }}
           >
             Login
           </Button>
