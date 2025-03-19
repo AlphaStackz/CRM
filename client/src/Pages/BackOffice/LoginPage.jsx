@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useUser } from '../../context/UserContext';
+import { useNavigate } from "react-router-dom";
 import { TextField, Button, Container, Typography, Box } from '@mui/material';
 
+
 const Login = () => {
+  const { login } = useUser();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
+
+
+
 
   const validate = () => {
     let tempErrors = {};
@@ -18,7 +26,9 @@ const Login = () => {
     e.preventDefault();
     if (validate()) {
       console.log('Email:', email, 'Password:', password);
-      // Handle login logic here
+
+      login({ name: email.split("@")[0], email });
+      navigate("/");
     }
   };
 

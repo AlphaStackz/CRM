@@ -1,11 +1,22 @@
 ﻿import React from 'react';
+import { useUser } from '../context/UserContext.jsx';
 import { NavLink } from 'react-router-dom';
 import { Stack, Button, Typography } from '@mui/material';
 import DeleteDialog from './DeleteUser.jsx';
 import UpdateUserIcon from './UpdateUser.jsx';
 import AddNewUserIcon from './AddNewUser.jsx';
+import LoginIcon from '@mui/icons-material/Login';
+import LogoutIcon from '@mui/icons-material/Logout';
+
 
 const Menu = () => {
+
+    const { user, login, logout } = useUser();
+
+    // const handleLogin = () => {
+    //   login({ name: "John Doe" });
+    // };
+
     const linkStyle = {
         textDecoration: 'none',
         width: '100%',
@@ -42,6 +53,24 @@ const Menu = () => {
                 backgroundColor:'#e3f2fd',
             }}
         >
+            
+        
+                {user ? (
+                    <>
+                      <Typography>{user.name}</Typography>
+                      <Button variant="outlined" endIcon={<LogoutIcon />} onClick={logout}>
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                <NavLink to="/login" style={linkStyle} activeStyle={activeStyle}>
+                <Button variant="outlined" endIcon={<LoginIcon />}>
+                login
+                </Button>  
+                </NavLink>)
+            }
+            
+         
             <Typography variant='h3' sx={{fontSize:'1.5rem'}}>SeCuReMe</Typography>
 
             <Stack className="menu-buttons" spacing={2}>
