@@ -7,6 +7,7 @@ import AdminHomePage from './Pages/Backoffice/AdminHomePage';
 import WebShop from './Pages/Webpage/WebShop';
 import MyCase from './Pages/Backoffice/MyCase';
 import ChatPage from './Pages/Webpage/ChatPage';
+import Login from './Pages/BackOffice/LoginPage';
 
 function App() {
     return (
@@ -16,6 +17,7 @@ function App() {
                     <Route index element={<WebShop/>} />
                     <Route path="chat-page/:chatToken" element={<ChatPage />} />
                     <Route path="my-case" element={<MyCase />} />
+                    <Route path="login" element={<Login />} />
                     <Route path="cases" element={<CaseList />} />
                     <Route path="admin-home-page" element={<AdminHomePage />} />
                     <Route path="user-list" element={<UserList />} />
