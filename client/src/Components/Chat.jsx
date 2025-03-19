@@ -136,8 +136,14 @@ export default function Chat( {customerChat, userCases, selectedCase, chatToken}
             });
 
             if (response.ok) {
-                // Rerender here
                 inputRef.current.value = "";
+                // Automatically refreshing chat messages.
+                if (isCustomerChat) {
+                    fetchCustomerChatData(chatToken); // re-fetching chat message
+                }
+                else {
+                    fetchUserChatData();
+                }
             }
             else
             {
