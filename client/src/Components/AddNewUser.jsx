@@ -10,7 +10,6 @@ import {
     TextField,
     Button
 } from "@mui/material";
-import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded"
 import UserList from "../Pages/Backoffice/UserList";
 
 function AddNewUser() {
