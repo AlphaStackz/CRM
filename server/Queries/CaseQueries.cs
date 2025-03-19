@@ -23,7 +23,7 @@ public static class CaseQueries
                 SELECT id, status, category, title,
                        customer_first_name, customer_last_name,
                        customer_email, case_opened, case_closed,
-                       case_handler
+                       case_handler, chat_token
                 FROM cases";
 
             using var cmd = new NpgsqlCommand(query, connection);
@@ -42,7 +42,8 @@ public static class CaseQueries
                     customer_email = reader.GetString(6),
                     case_opened = reader.IsDBNull(7) ? (DateTime?)null : reader.GetDateTime(7),
                     case_closed = reader.IsDBNull(8) ? (DateTime?)null : reader.GetDateTime(8),
-                    case_handler = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9)
+                    case_handler = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
+    				ChatToken = reader.IsDBNull(10) ? (Guid?)null : reader.GetGuid(10)
                 };
                 cases.Add(get_case);
             }
@@ -86,16 +87,22 @@ public static class CaseQueries
                             // Log attempt to send email..
                             Console.WriteLine($"Attempting to send email to: {caseData.customer_email}");
                             var emailBody = $@"
-Hello {caseData.customer_first_name},
-Thank you for contacting us about: {caseData.title}.
-We have received your message:
-------------------------------------------------
+<br>
+Dear {caseData.customer_first_name},
+<br>
+Thank you for contacting us about:
+<br><br>
+{caseData.title}
+<br>
 {messageData.text}
-------------------------------------------------
-
-We will review your case and respond as soon as possible.
-
+<br>
+Please follow this link to view your case chat: 
+<a href=""http://localhost:5174/chat-page/{caseData.ChatToken}"">https://localhost:5174/chat-page</a>
+<br><br>
+We will review you case and respond as soon as possible.
+<br><br>
 Best regards,
+<br>
 Your Support Team
 ";
                             await emailService.SendEmailAsync(
@@ -136,8 +143,8 @@ Your Support Team
         });
     }
 
-    // Helper method for inserting a case and its first message
-    // Eventuellt lyfta ut InsertCase och InsertMessage som separata funktioner för återanvändning?
+    // Method for inserting a case and its first message
+    // Eventually filter out InsertCase and InsertMessage as separate functions for reusage
     private static async Task<int?> PostCase(NpgsqlConnection db, Case caseData, Message messageData)
     {
         try
@@ -177,7 +184,7 @@ Your Support Team
                     case_handler
                 ) 
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                RETURNING id";
+                RETURNING id, chat_token";
 
             caseCmd.Parameters.AddWithValue(statusEnum);
             caseCmd.Parameters.AddWithValue(categoryEnum);
@@ -191,9 +198,23 @@ Your Support Team
 
             object? caseResult = await caseCmd.ExecuteScalarAsync();
             int? caseId = caseResult as int?;
+			Guid? chatToken = null;
+			
+			using (var reader = await caseCmd.ExecuteReaderAsync()) 
+			{
+				if (await reader.ReadAsync()) 
+				{
+					caseId = reader.GetInt32(0);
+					chatToken = reader.GetGuid(1);
+				}
+			}
 
-            if (caseId != null)
+            if (caseId != null && chatToken != null)
             {
+				// Store the returned id and chatToken back into caseDate
+				caseData.id = caseId.Value;
+				caseData.ChatToken = chatToken.Value;
+				
                 // Insert the first message for this new case
                 await using var messageCmd = db.CreateCommand();
                 messageCmd.CommandText = @"
