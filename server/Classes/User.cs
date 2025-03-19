@@ -1,7 +1,5 @@
 ﻿namespace server.Classes;
 
-using DefaultNamespace;
-
 public class User
 {
     public int? Id { get; set; }
@@ -14,6 +12,7 @@ public class User
 
     // Parameterless constructor (required for deserialization)
     public User() { }
+
     public User(
         int? Id = null,
         string role = "",
