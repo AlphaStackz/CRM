@@ -12,7 +12,7 @@ public static class CaseQueries
 {
     public static void MapCaseEndpoints(this WebApplication app, Database database, IEmailService emailService)
     {
-        // Get Cases
+        // Get Cases  changes made in order to make mailkit look better with a redirect to chattoken
         app.MapGet("/cases", async () =>
         {
             var cases = new List<Case>();
