@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useUser } from '../../context/UserContext';
-import { useNavigate } from 'react-router-dom';
+import { useParams,useNavigate } from 'react-router-dom';
 import LoginForm from '../../Components/LoginForm';
 
-const LoginPage = () => {
-  const { login } = useUser();
+const RegisterPage = () => {
   const navigate = useNavigate();
+  const { id: userId } = useParams(); 
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -24,25 +23,23 @@ const LoginPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      fetch('/api/login', {
-        method: 'POST',
-        credentials: 'include',
+      fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           User_name: userName,
-          Password: password,
+          New_password: password,
         }),
       })
         .then((response) => {
           if (!response.ok) {
-            throw new Error('Page failed. Please check your credentials.');
+            throw new Error('Password update failed. Please try again.');
           }
           return response.json();
         })
         .then((data) => {
-          console.log('Login successful:', data);
-          login({ name: userName, userName });
-          navigate('/');
+          console.log('Password updated successfully:', data);
+          navigate('/login');
         })
         .catch((error) => {
           console.error(error.message);
@@ -53,8 +50,8 @@ const LoginPage = () => {
 
   return (
     <LoginForm
-      title="Login"
-      isLoginForm={true}
+      title="Set new Password"
+      isLoginForm={false}
       handleSubmit={handleSubmit}
       userName={userName}
       setUserName={setUserName}
@@ -65,4 +62,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default RegisterPage;
