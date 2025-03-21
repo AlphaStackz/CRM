@@ -19,7 +19,7 @@ function App() {
                     <Route path="chat-page/:chatToken" element={<ChatPage />} />
                     <Route path="my-case" element={<MyCase />} />
                     <Route path="login" element={<LoginPage />} />
-                    <Route path="register/:id" element={<RegisterPage />} />
+                    <Route path="register/:registertoken" element={<RegisterPage />} />
                     <Route path="cases" element={<CaseList />} />
                     <Route path="admin-home-page" element={<AdminHomePage />} />
                     <Route path="user-list" element={<UserList />} />
