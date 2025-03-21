@@ -25,6 +25,7 @@ const RegisterPage = () => {
     if (validate()) {
       fetch(`/api/users/${registertoken}`, { 
         method: 'PATCH',
+        credentials:'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           User_name: userName,
