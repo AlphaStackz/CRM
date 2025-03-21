@@ -7,6 +7,7 @@ using Npgsql;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
+using DotNetEnv;
 
 public static class CaseQueries
 {
@@ -86,6 +87,7 @@ public static class CaseQueries
                         {
                             // Log attempt to send email..
                             Console.WriteLine($"Attempting to send email to: {caseData.customer_email}");
+                            var appUrl = Env.GetString("APP_URL") ?? "http://localhost:5173";
                             var emailBody = $@"
 <br>
 Dear {caseData.customer_first_name},
@@ -97,9 +99,9 @@ Thank you for contacting us about:
 {messageData.text}
 <br>
 Please follow this link to view your case chat: 
-<a href=""http://localhost:5174/chat-page/{caseData.ChatToken}"">https://localhost:5174/chat-page</a>
+<a href=""http://localhost:5173/chat-page/{caseData.ChatToken}"">http://localhost:5173/chat-page/{caseData.ChatToken}</a>
 <br><br>
-We will review you case and respond as soon as possible.
+We will review your case and respond as soon as possible.
 <br><br>
 Best regards,
 <br>
@@ -196,8 +198,8 @@ Your Support Team
             caseCmd.Parameters.AddWithValue(caseData.case_closed ?? (object)DBNull.Value);
             caseCmd.Parameters.AddWithValue(caseData.case_handler ?? (object)DBNull.Value);
 
-            object? caseResult = await caseCmd.ExecuteScalarAsync();
-            int? caseId = caseResult as int?;
+            
+            int? caseId = null;
 			Guid? chatToken = null;
 			
 			using (var reader = await caseCmd.ExecuteReaderAsync()) 
