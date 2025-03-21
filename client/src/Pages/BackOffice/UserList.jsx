@@ -1,28 +1,11 @@
 ﻿import React, { useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, TableSortLabel } from '@mui/material'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
-import { IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField} from '@mui/material';
+import { IconButton, Typography,Stack, TextField} from '@mui/material';
 import DeleteDialog from '../../Components/DeleteUser';
 
-/* async function getUserData(){
-    try {
-        const response = await fetch("/api/users", {
-            method: 'GET',
-        });
-
-        if (!response.ok){
-            throw new Error(`HTTP error! Status ${response.status}`);
-        }
-        
-        const usersFromApi = await response.json();
-        console.log("Parsed JSON:", usersFromApi);
-        return usersFromApi;
-        
-    } catch (error) {
-        console.log("Fetch error:", error.message);
-        return [];
-    }
-} */
+import AddNewUser from '../../Components/AddNewUser';
+import UpdateUserIcon from'../../Components/UpdateUser';
 
 export default function UserList() {
     const [userData, setUserData] = useState([]); // store userdata from API
@@ -34,16 +17,18 @@ export default function UserList() {
     const [selectedUserId, setSelectedUserId] = useState(null); // track which user is being deleted
     const [selectedUser_name, setSelectedUser_name] = useState(null);
 
-    useEffect(() => {
-        console.log("Calling useEffect")
-        const fetchUsers = () => {
-            console.log("Fetching users...")
-            fetch("/api/users")
-                .then(response => response.json())
-                .then(data => setUserData(data))
-                .catch(error => console.error("fetch error:", error));
-            console.log(userData);
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            const data = await response.json();
+            setUserData(data);
+            console.log('Fetched users:', data);
+        } catch (error) {
+            console.error('fetch error:', error);
         }
+    };
+
+    useEffect(() => {
         fetchUsers();
     }, []);
 
@@ -98,7 +83,12 @@ export default function UserList() {
 
     return (
         <>
-            {/* Search bar */}
+             <Typography variant='h3'>Users</Typography>
+        <Stack direction={'row'} >
+        <AddNewUser onUserAdded={fetchUsers} />
+        {/* //  handleSubmit={handleAddSubmit} newUser={newUser} setNewUser={setNewUser} */}
+        <UpdateUserIcon />
+        </Stack>
             <TextField
                 label="Search Users"
                 variant="outlined"
