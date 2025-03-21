@@ -6,10 +6,11 @@ using Npgsql;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
+using server.Services;
 
 public static class UserQueries
 {
-    public static void MapUserEndpoints(this WebApplication app, Database database)
+    public static void MapUserEndpoints(this WebApplication app, Database database, IEmailService emailService)
     {
         // Get request endpoint to fetch users
         app.MapGet("/users", async () =>
@@ -101,40 +102,84 @@ public static class UserQueries
         {
             try
             {
-                var newUser = await context.Request.ReadFromJsonAsync<User>();
-                if (newUser == null)
+        // Parse request body
+        var newUser = await context.Request.ReadFromJsonAsync<User>();
+        if (newUser == null || string.IsNullOrEmpty(newUser.Email))
+        {
+            return Results.BadRequest("Invalid user data or missing email.");
+        }
+
+        // Ensure role is valid
+        var role = newUser.Role.ToLower();
+        if (role != "admin" && role != "customer_support")
+        {
+            return Results.BadRequest("Invalid role. Allowed values: 'admin', 'customer_support'.");
+        }
+
+        // Generate unique registerToken (GUID)
+        var registerToken = Guid.NewGuid();
+        // Insert user into the database
+        await using var connection = database.GetConnection();
+        await connection.OpenAsync();
+
+        var query = @"
+            INSERT INTO users (user_name, password, role, email, active, register_token, status)
+            VALUES (@UserName, @Password, CAST(@Role AS user_role), @Email, @Active, @RegisterToken, 'pending')
+            RETURNING id";
+
+        await using var cmd = new NpgsqlCommand(query, connection);
+        cmd.Parameters.AddWithValue("@UserName", newUser.User_name);
+        cmd.Parameters.AddWithValue("@Password", newUser.Password);
+        cmd.Parameters.AddWithValue("@Role", role);
+        cmd.Parameters.AddWithValue("@Email", newUser.Email);
+        cmd.Parameters.AddWithValue("@Active", newUser.Active);
+        cmd.Parameters.AddWithValue("@RegisterToken", registerToken);
+
+        var id = await cmd.ExecuteScalarAsync();
+
+        if (id == null)
+        {
+            return Results.Problem("Failed to insert new user.");
+        }
+
+        // Send registration email
+        try
+        {
+            var registrationLink = $"http://localhost:5173/register/{registerToken}";
+            var emailBody = $@"
+                <br>
+                Hello {newUser.User_name},
+                <br><br>
+                Welcome to our platform! To complete your registration, click the link below:
+                <br>
+                <a href=""{registrationLink}"">{registrationLink}</a>
+                <br><br>
+                This link is valid for a limited time.
+                <br><br>
+                Best regards,
+                <br>
+                Your Support Team
+            ";
+
+            await emailService.SendEmailAsync(
+                to: newUser.Email,
+                subject: "Complete Your Registration",
+                body: emailBody
+            );
+
+            Console.WriteLine($"Registration email sent to: {newUser.Email}");
+                }
+                catch (Exception emailEx)
                 {
-                    return Results.BadRequest("Invalid JSON body.");
+                    Console.WriteLine($"[ERROR] Failed to send email: {emailEx.Message}");
                 }
 
-                var role = newUser.Role.ToLower();
-                if (role != "admin" && role != "customer_support")
-                {
-                    return Results.BadRequest("Invalid role. Allowed values: 'admin', 'customer_support'.");
-                }
-
-                using var connection = database.GetConnection();
-                await connection.OpenAsync();
-
-                var query = @"
-                    INSERT INTO users (user_name, password, role, email, active)
-                    VALUES (@UserName, @Password, CAST(@Role AS user_role), @Email, @Active)
-                    RETURNING id";
-
-                using var cmd = new NpgsqlCommand(query, connection);
-                cmd.Parameters.AddWithValue("@UserName", newUser.User_name);
-                cmd.Parameters.AddWithValue("@Password", newUser.Password);
-                cmd.Parameters.AddWithValue("@Role", role);
-                cmd.Parameters.AddWithValue("@Email", newUser.Email);
-                cmd.Parameters.AddWithValue("@Active", newUser.Active);
-
-                var id = await cmd.ExecuteScalarAsync();
-                return Results.Created($"/users/{id}",
-                    new { id, newUser.User_name, newUser.Role, newUser.Email, newUser.Active });
+                return Results.Created($"/users/{id}", new { id, newUser.User_name, newUser.Email, newUser.Role });
             }
             catch (Exception ex)
             {
-                return Results.Problem($"Database error: {ex.Message}");
+                Console.WriteLine($"Database error: {ex.Message}");
+                return Results.Problem("An unexpected error occurred.");
             }
         });
 

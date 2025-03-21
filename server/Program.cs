@@ -51,7 +51,7 @@ var database = new Database();
 database.TestConnection();
 
 // Mapping all endpoints via extension methods
-app.MapUserEndpoints(database);
+app.MapUserEndpoints(database,emailService);
 app.MapCaseEndpoints(database, emailService); 
 app.MapChatEndpoints(database, emailService);
 app.MapLoginEndpoints(database);
