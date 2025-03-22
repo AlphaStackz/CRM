@@ -300,17 +300,15 @@ Your Support Team
                 return Results.Problem($"Database error: {ex.Message}");
             }
         });
-
-        // PUT /register
-        app.MapPut("/register", async (HttpContext ctx, User userRequest) =>
+        // POST /register
+        app.MapPost("/register", async (HttpContext ctx, User userRequest) =>
         {
             await using var connection = database.GetConnection();
             try
             {
                 await connection.OpenAsync();
 
-                var updateQuery = @"UPDATE users SET password = @newPassword, status = 'complete' WHERE user_name = @username AND status = 'pending'";
-
+                var updateQuery = @"UPDATE users SET password = @newPassword, status = 'complete' WHERE LOWER(user_name) = LOWER(@username) AND status = 'pending'";
                 await using var cmd = new NpgsqlCommand(updateQuery, connection);
                 cmd.Parameters.AddWithValue("@username", userRequest.User_name ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@newPassword", userRequest.Password ?? (object)DBNull.Value);
