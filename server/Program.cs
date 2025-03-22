@@ -50,8 +50,10 @@ NpgsqlConnection.GlobalTypeMapper.MapEnum<CaseCategory>();
 var database = new Database();
 database.TestConnection();
 
-// Mapping all endpoints via extension methods
-app.MapUserEndpoints(database);
+// **update: Provide `emailService` to MapUserEndpoints
+app.MapUserEndpoints(database, emailService);
+// **update: End
+
 app.MapCaseEndpoints(database, emailService); 
 app.MapChatEndpoints(database, emailService);
 app.MapLoginEndpoints(database);

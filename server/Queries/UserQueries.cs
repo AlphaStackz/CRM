@@ -1,30 +1,29 @@
 ﻿namespace server.Queries;
-
-using DefaultNamespace;
+using System.Text.Json;
 using server.Classes;
 using Npgsql;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using System.Text.Json;
+using System.Text.Json.Serialization;
+using DefaultNamespace;
+using server.Services;
 
 public static class UserQueries
 {
-    public static void MapUserEndpoints(this WebApplication app, Database database)
+    // Add EmailService as a parameter so we can send emails
+    public static void MapUserEndpoints(this WebApplication app, Database database, EmailService emailService)
     {
-        // Get request endpoint to fetch users
+        // Get request endpoint to fetch user
         app.MapGet("/users", async () =>
         {
             // Return a list of User objects
             var users = new List<User>();
-            
             // Retrieve a connection from your Database class
             using var connection = database.GetConnection();
             await connection.OpenAsync();
-
             // Build the SQL command
             var query = "SELECT id, user_name, password, role, email, active FROM users";
             using var cmd = new NpgsqlCommand(query, connection);
-            
             // Execute and read the results
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -51,22 +50,10 @@ public static class UserQueries
                 var cases = new List<Case>();
                 using var connection = database.GetConnection();
                 await connection.OpenAsync();
-
-                var query = @"
-                    SELECT cases.id,
-                           cases.status,
-                           cases.category,
-                           cases.title,
-                           cases.customer_first_name,
-                           cases.customer_last_name,
-                           cases.customer_email,
-                           cases.case_opened,
-                           cases.case_closed,
-                           cases.case_handler
-                    FROM cases
-                    JOIN users ON cases.case_handler = users.id
-                    WHERE users.id = @id";
-
+                var query = @"SELECT cases.id, cases.status, cases.category, cases.title, cases.customer_first_name, cases.customer_last_name, cases.customer_email, cases.case_opened, cases.case_closed, cases.case_handler 
+                              FROM cases 
+                              JOIN users ON cases.case_handler = users.id 
+                              WHERE users.id = @id";
                 using var cmd = new NpgsqlCommand(query, connection);
                 cmd.Parameters.AddWithValue("@id", id);
 
@@ -96,18 +83,73 @@ public static class UserQueries
             }
         });
 
+        // **update: GET /register/{token:guid} to retrieve username by register_token
+        app.MapGet("/register/{token:guid}", async (Guid token) =>
+        {
+            using var connection = database.GetConnection();
+            await connection.OpenAsync();
+
+            var query = @"
+                SELECT user_name
+                FROM users
+                WHERE register_token = @token
+                  AND status = 'pending'
+            ";
+
+            using var cmd = new NpgsqlCommand(query, connection);
+            cmd.Parameters.AddWithValue("@token", token);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                string userName = reader.GetString(reader.GetOrdinal("user_name"));
+                return Results.Ok(new { userName });
+            }
+
+            // If no matching user found, return 404
+            return Results.NotFound(new { message = "No pending user found for this token." });
+        });
+        // **update: End GET /register/{token:guid}
+
         // POST /new-user
         app.MapPost("/new-user", async (HttpContext context) =>
         {
             try
             {
+                // Check if user is logged in and is admin
+                var currentUserJson = context.Session.GetString("User");
+                if (string.IsNullOrEmpty(currentUserJson))
+                {
+                    return Results.Json(new { message = "You must be logged in." }, statusCode: 401);
+                }
+                var currentUser = JsonSerializer.Deserialize<User>(currentUserJson!);
+                if (currentUser == null || string.IsNullOrEmpty(currentUser.Role) || currentUser.Role.ToLower() != "admin")
+                {
+                    return Results.Json(new { message = "Only admin can add new users." }, statusCode: 401);
+                }
+
                 var newUser = await context.Request.ReadFromJsonAsync<User>();
                 if (newUser == null)
                 {
                     return Results.BadRequest("Invalid JSON body.");
                 }
 
-                var role = newUser.Role.ToLower();
+                // **update: Validate mandatory fields so we can safely use !
+                if (string.IsNullOrEmpty(newUser.User_name))
+                {
+                    return Results.BadRequest("User_name is required.");
+                }
+                if (string.IsNullOrEmpty(newUser.Password))
+                {
+                    return Results.BadRequest("Password is required.");
+                }
+                if (string.IsNullOrEmpty(newUser.Role))
+                {
+                    return Results.BadRequest("Role is required.");
+                }
+                // **update: End
+
+                var role = newUser.Role!.ToLower();
                 if (role != "admin" && role != "customer_support")
                 {
                     return Results.BadRequest("Invalid role. Allowed values: 'admin', 'customer_support'.");
@@ -116,21 +158,52 @@ public static class UserQueries
                 using var connection = database.GetConnection();
                 await connection.OpenAsync();
 
+                // Generate a unique token for registration
+                var token = Guid.NewGuid();
+
+                // Insert user with status "pending" and register_token
                 var query = @"
-                    INSERT INTO users (user_name, password, role, email, active)
-                    VALUES (@UserName, @Password, CAST(@Role AS user_role), @Email, @Active)
+                    INSERT INTO users (user_name, password, role, email, active, status, register_token)
+                    VALUES (@UserName, @Password, CAST(@Role AS user_role), @Email, @Active, 'pending', @RegisterToken)
                     RETURNING id";
 
                 using var cmd = new NpgsqlCommand(query, connection);
-                cmd.Parameters.AddWithValue("@UserName", newUser.User_name);
-                cmd.Parameters.AddWithValue("@Password", newUser.Password);
+
+                // **update: Use ! for fields we validated, pass DBNull for optional
+                cmd.Parameters.AddWithValue("@UserName", newUser.User_name!);
+                cmd.Parameters.AddWithValue("@Password", newUser.Password!);
                 cmd.Parameters.AddWithValue("@Role", role);
-                cmd.Parameters.AddWithValue("@Email", newUser.Email);
-                cmd.Parameters.AddWithValue("@Active", newUser.Active);
+                cmd.Parameters.AddWithValue("@Email", newUser.Email ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@Active", newUser!.Active);  // newUser can't be null after check
+                cmd.Parameters.AddWithValue("@RegisterToken", token);
 
                 var id = await cmd.ExecuteScalarAsync();
+
+                // Send an email with the registration link
+                var registrationLink = $"http://localhost:5173/register/{token}";
+                var mailBody = $@"
+Hello {newUser.User_name},
+<br><br>
+Welcome to our platform! To complete your registration, click the link below:
+<br>
+<a href=""http://localhost:5173/register/{token}"">{registrationLink}</a>
+<br><br>
+Regards,
+<br>
+Your Support Team
+";
+                if (!string.IsNullOrEmpty(newUser.Email))
+                {
+                    await emailService.SendEmail(new EmailRequest(
+                        To: newUser.Email,
+                        Subject: "Complete Your Registration",
+                        Body: mailBody
+                    ));
+                    Console.WriteLine("Message sent to new user email successfully");
+                }
+
                 return Results.Created($"/users/{id}",
-                    new { id, newUser.User_name, newUser.Role, newUser.Email, newUser.Active });
+                    new { id, newUser.User_name, newUser.Role, newUser.Email, newUser.Active, token });
             }
             catch (Exception ex)
             {
@@ -193,10 +266,17 @@ public static class UserQueries
                     updatedUserFields.Add("role = @Role::user_role");
                     userParameters.Add(new NpgsqlParameter("@Role", updatedUser.Role));
                 }
+                // Allow updating status (for registration completion)
+                if (!string.IsNullOrEmpty(updatedUser.Status))
+                {
+                    updatedUserFields.Add("status = @Status");
+                    userParameters.Add(new NpgsqlParameter("@Status", updatedUser.Status));
+                }
 
                 // Always update "active" (boolean)
                 updatedUserFields.Add("active = @Active");
-                userParameters.Add(new NpgsqlParameter("@Active", updatedUser.Active));
+                // updatedUser.Active is a bool, so we can do updatedUser!.Active
+                userParameters.Add(new NpgsqlParameter("@Active", updatedUser!.Active));
 
                 var query = $@"
                     UPDATE users 
@@ -229,16 +309,11 @@ public static class UserQueries
             {
                 await connection.OpenAsync();
 
-                var updateQuery = @"
-                    UPDATE users
-                    SET password = @newPassword,
-                        status = 'complete'
-                    WHERE user_name = @username
-                      AND status = 'pending'";
+                var updateQuery = @"UPDATE users SET password = @newPassword, status = 'complete' WHERE user_name = @username AND status = 'pending'";
 
                 await using var cmd = new NpgsqlCommand(updateQuery, connection);
-                cmd.Parameters.AddWithValue("@username", userRequest.User_name);
-                cmd.Parameters.AddWithValue("@newPassword", userRequest.Password);
+                cmd.Parameters.AddWithValue("@username", userRequest.User_name ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@newPassword", userRequest.Password ?? (object)DBNull.Value);
 
                 int rowsAffected = await cmd.ExecuteNonQueryAsync();
                 if (rowsAffected > 0)
