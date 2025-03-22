@@ -38,7 +38,7 @@ function AddNewUser() {
 
     const handleSubmit = async () => {
         if (!userData.user_name.trim() || !userData.email.trim() || !userData.password.trim()) {
-            alert("Alla fält är obligatoriska!");
+            alert("Please provide an input");
             return;
         }
         try {

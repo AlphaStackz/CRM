@@ -4,31 +4,36 @@ import LoginForm from '../../Components/LoginForm';
 
 const RegisterPage = () => {
     const navigate = useNavigate();
-    // **update: Get the token parameter from the URL instead of id
+    // Extract the token from URL – if your App.jsx route is "/register/:id", then do:
     const { token } = useParams();
+    // If you update App.jsx to use "/register/:token", then use:
+    // const { token } = useParams();
+
     const [userName, setUserName] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({});
 
-    // **update: Fetch pending user info by token from GET /register/{token}
+    // 1) Fetch the username from GET /api/register/{token}
     useEffect(() => {
-        fetch(`/register/${token}`)
-            .then((response) => {
-                if (!response.ok) {
+        // Use backticks to correctly interpolate the token in the URL
+        fetch(`/api/register/${token}`)
+            .then((res) => {
+                if (!res.ok) {
                     throw new Error("Failed to fetch user info.");
                 }
-                return response.json();
+                return res.json();
             })
             .then((data) => {
-                // Pre-fill the username field with the username returned by the server
+                // Pre-fill the username in state with the value returned from the server
                 setUserName(data.userName);
             })
-            .catch((error) => {
-                console.error("Error fetching user info:", error);
+            .catch((err) => {
+                console.error("Error fetching user info:", err);
             });
     }, [token]);
-    // **update: End fetch pending user info
+    // End fetch
 
+    // 2) Validate
     const validate = () => {
         let tempErrors = {};
         tempErrors.userName = userName ? '' : 'Username is required';
@@ -40,39 +45,36 @@ const RegisterPage = () => {
         return Object.values(tempErrors).every((x) => x === '');
     };
 
+    // 3) Submit -> POST /register
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (validate()) {
-            // **update: Call PUT /register to update the pending user record with new password
-            fetch('/register', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    User_name: userName,
-                    Password: password
-                }),
+        if (!validate()) return;
+
+        fetch('/api/register', {
+            method: 'POST', // Using POST to complete registration
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                User_name: userName,
+                Password: password
             })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Password update failed. Please try again.');
-                    }
-                    return response.json();
-                })
-                .then((data) => {
-                    console.log('Registration completed successfully:', data);
-                    navigate('/login');
-                })
-                .catch((error) => {
-                    console.error(error.message);
-                    setErrors({ general: error.message });
-                });
-            // **update: End update
-        }
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error('Password update failed. Please try again.');
+                return res.json();
+            })
+            .then((data) => {
+                console.log('Registration completed successfully:', data);
+                navigate('/login');
+            })
+            .catch((error) => {
+                console.error(error.message);
+                setErrors({ general: error.message });
+            });
     };
 
     return (
         <LoginForm
-            title="Set new Password"
+            title="Set New Password"
             isLoginForm={false}
             handleSubmit={handleSubmit}
             userName={userName}
@@ -80,6 +82,7 @@ const RegisterPage = () => {
             password={password}
             setPassword={setPassword}
             errors={errors}
+            readOnlyUser={true} // Make the username field read-only so it can't be changed
         />
     );
 };
