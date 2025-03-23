@@ -4,18 +4,14 @@ import LoginForm from '../../Components/LoginForm';
 
 const RegisterPage = () => {
     const navigate = useNavigate();
-    // Extract the token from URL – if your App.jsx route is "/register/:id", then do:
     const { token } = useParams();
-    // If you update App.jsx to use "/register/:token", then use:
-    // const { token } = useParams();
-
+    
     const [userName, setUserName] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({});
 
     // 1) Fetch the username from GET /api/register/{token}
     useEffect(() => {
-        // Use backticks to correctly interpolate the token in the URL
         fetch(`/api/register/${token}`)
             .then((res) => {
                 if (!res.ok) {
@@ -31,7 +27,7 @@ const RegisterPage = () => {
                 console.error("Error fetching user info:", err);
             });
     }, [token]);
-    // End fetch
+    
 
     // 2) Validate
     const validate = () => {

@@ -1,3 +1,5 @@
+using DefaultNamespace;
+
 using System.Text.Json;
 using DotNetEnv;
 using Npgsql;
@@ -8,7 +10,6 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
-using DefaultNamespace;
 using server.Services;
 using server.Classes;
 using server.Queries;

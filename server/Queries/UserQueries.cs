@@ -83,7 +83,7 @@ public static class UserQueries
             }
         });
 
-        // **update: GET /register/{token:guid} to retrieve username by register_token
+        // GET /register/{token:guid} to retrieve username by register_token
         app.MapGet("/register/{token:guid}", async (Guid token) =>
         {
             using var connection = database.GetConnection();
@@ -109,7 +109,7 @@ public static class UserQueries
             // If no matching user found, return 404
             return Results.NotFound(new { message = "No pending user found for this token." });
         });
-        // **update: End GET /register/{token:guid}
+        // End GET /register/{token:guid}
 
         // POST /new-user
         app.MapPost("/new-user", async (HttpContext context) =>
@@ -134,7 +134,7 @@ public static class UserQueries
                     return Results.BadRequest("Invalid JSON body.");
                 }
 
-                // **update: Validate mandatory fields so we can safely use !
+                // Validate mandatory fields so we can safely use !
                 if (string.IsNullOrEmpty(newUser.User_name))
                 {
                     return Results.BadRequest("User_name is required.");
@@ -143,11 +143,11 @@ public static class UserQueries
                 {
                     return Results.BadRequest("Password is required.");
                 }
+
                 if (string.IsNullOrEmpty(newUser.Role))
                 {
                     return Results.BadRequest("Role is required.");
                 }
-                // **update: End
 
                 var role = newUser.Role!.ToLower();
                 if (role != "admin" && role != "customer_support")
@@ -169,12 +169,12 @@ public static class UserQueries
 
                 using var cmd = new NpgsqlCommand(query, connection);
 
-                // **update: Use ! for fields we validated, pass DBNull for optional
+                // Use ! for fields validated, pass DBNull for optional
                 cmd.Parameters.AddWithValue("@UserName", newUser.User_name!);
                 cmd.Parameters.AddWithValue("@Password", newUser.Password!);
                 cmd.Parameters.AddWithValue("@Role", role);
                 cmd.Parameters.AddWithValue("@Email", newUser.Email ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@Active", newUser!.Active);  // newUser can't be null after check
+                cmd.Parameters.AddWithValue("@Active", newUser!.Active);  // newUser cannot be null after check
                 cmd.Parameters.AddWithValue("@RegisterToken", token);
 
                 var id = await cmd.ExecuteScalarAsync();

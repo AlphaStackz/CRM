@@ -1,4 +1,5 @@
 ﻿namespace server.Records;
+
 using DefaultNamespace;
 public record LoginRequest()
 {

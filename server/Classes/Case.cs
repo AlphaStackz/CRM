@@ -1,9 +1,7 @@
 ﻿namespace server.Classes;
 
 using DefaultNamespace;
-
 using System.Text.Json.Serialization;
-//using System.Runtime.Serialization;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CaseStatus
