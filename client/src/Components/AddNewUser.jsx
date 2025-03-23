@@ -1,71 +1,78 @@
-﻿import React, { useState } from 'react';
+﻿import AddBoxTwoToneIcon from '@mui/icons-material/AddBoxTwoTone';
+
+import React, {useEffect, useState} from 'react';
 import {
-    IconButton,
-    Dialog,
+    IconButton, 
+    Dialog, 
     DialogTitle,
     DialogContent,
     DialogActions,
     TextField,
     Button
-} from '@mui/material';
-import AddBoxTwoToneIcon from '@mui/icons-material/AddBoxTwoTone';
+} from "@mui/material";
+import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded"
+import UserList from "../Pages/Backoffice/UserList";
 
-function AddNewUser({ onUserAdded }) {
+function AddNewUser() {
     const [open, setOpen] = useState(false);
-
+    
     const [userData, setUserData] = useState({
-        user_name: '',
-        email: '',
-        password: '',
-        role: 'customer_support', // Default role
-        active: true, // Default active status
+        user_name: "",
+        email: "",
+        password: "",
+        role: "customer_support", // Hardcoded admin inserts new user
+        active: true, // Hardcoded Active automatically
     });
-
+    
     const handleOpen = () => setOpen(true);
+
     const handleClose = () => setOpen(false);
 
+    // e = event, handles input changes
     const handleChange = (e) => {
         setUserData({
-            ...userData,
-            [e.target.name]: e.target.value,
+            ...userData, 
+            [e.target.name]: e.target.value, // name = username, email, password. value = input 
         });
     };
 
     const handleSubmit = async () => {
         if (!userData.user_name.trim() || !userData.email.trim() || !userData.password.trim()) {
-            alert('Alla fält är obligatoriska!');
+            alert("Please provide an input");
             return;
         }
-
         try {
-            const response = await fetch('/api/new-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch("/api/new-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(userData),
             });
 
             if (response.ok) {
-                alert('User added successfully!');
-                setUserData({ user_name: '', email: '', password: '', role: 'customer_support', active: true });
+                alert("User added successfully!");
                 handleClose();
-
-                // ✅ Call parent function to refresh user list
-                if (onUserAdded) onUserAdded();
-            } else {
-                const errorData = await response.json();
-                alert(`Error adding user: ${errorData.message || 'Unknown error'}`);
+                UserList;
+                setUserData({ user_name: "", email: "", password: "" }); // Nollställer formuläret
+            } 
+            else {
+                // If the response is not ok, attempt to parse the response body
+                const errorData = await response.json(); // assuming the response is JSON
+                console.error("Error response:", errorData); // Log error details
+                alert(`Error adding user: ${errorData.message || "Unknown error"}`);
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error("Error:", error);
         }
     };
 
     return (
         <div>
+            {/* Button to open the form */}
             <IconButton color="primary" onClick={handleOpen}>
-                <AddBoxTwoToneIcon />
+                <AddBoxTwoToneIcon/>
             </IconButton>
-
+            
+            {/* Dialog with a form */}
             <Dialog
                 open={open}
                 onClose={handleClose}
@@ -73,11 +80,12 @@ function AddNewUser({ onUserAdded }) {
                 maxWidth="xs"
                 fullWidth
                 BackdropProps={{
-                    style: { backdropFilter: 'blur(5px)' },
+                    style: { backdropFilter: "blur(5px)" },
                 }}
             >
                 <DialogTitle id="dialog-title">Add New User</DialogTitle>
                 <DialogContent>
+                    {/* Input fields for user details */}
                     <TextField
                         fullWidth
                         label="Användarnamn"
@@ -109,6 +117,7 @@ function AddNewUser({ onUserAdded }) {
                     />
                 </DialogContent>
                 <DialogActions>
+                    {/* Submit & Cancel Buttons */}
                     <Button onClick={handleClose} color="secondary">
                         Cancel
                     </Button>

@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { useUser } from '../context/UserContext.jsx';
-import { NavLink } from 'react-router-dom';
+import {NavLink, useNavigate} from 'react-router-dom';
 import { Stack, Button, Typography } from '@mui/material';
 import DeleteDialog from './DeleteUser.jsx';
 import UpdateUserIcon from './UpdateUser.jsx';
@@ -10,13 +10,22 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 
 const Menu = () => {
-
-    const { user, login, logout } = useUser();
-
-    // const handleLogin = () => {
-    //   login({ name: "John Doe" });
-    // };
-
+    const { user, logout } = useUser();
+    const navigate = useNavigate(); // to navigate user on logout
+    async function handleLogout() {
+        const response = await fetch("/api/login", {
+            method: "DELETE",
+            credentials: "include"
+        });
+        if (response.ok) {
+            logout();
+            navigate("/login");
+        } 
+        else {
+            console.error("Unable to log in");
+        }
+    }
+    
     const linkStyle = {
         textDecoration: 'none',
         width: '100%',
@@ -58,7 +67,7 @@ const Menu = () => {
                 {user ? (
                     <>
                       <Typography>{user.name}</Typography>
-                      <Button variant="outlined" endIcon={<LogoutIcon />} onClick={logout}>
+                      <Button variant="outlined" endIcon={<LogoutIcon />} onClick={handleLogout}>
                         Logout
                       </Button>
                     </>

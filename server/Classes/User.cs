@@ -1,4 +1,5 @@
 ﻿namespace server.Classes;
+using DefaultNamespace;
 
 public class User
 {

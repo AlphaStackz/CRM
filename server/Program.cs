@@ -1,19 +1,19 @@
+using DefaultNamespace;
+
 using System.Text.Json;
 using DotNetEnv;
 using Npgsql;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Http;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
-using System.Text.Json.Nodes;
 using DefaultNamespace;
 using server.Services;
 using server.Classes;
 using server.Queries;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,9 +40,6 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-builder.Services.AddSignalR(); // added SignalR services
-builder.Services.AddSingleton<Database>();  // Register DB as a singleton so it can be injected into the SignalR hub
-
 // Building the WebApplication
 var app = builder.Build();
 app.UseSession();
@@ -55,8 +52,8 @@ NpgsqlConnection.GlobalTypeMapper.MapEnum<CaseCategory>();
 var database = new Database();
 database.TestConnection();
 
-// Mapping all endpoints via extension methods
-app.MapUserEndpoints(database);
+// Provide `emailService` to MapUserEndpoints
+app.MapUserEndpoints(database, emailService);
 app.MapCaseEndpoints(database, emailService); 
 app.MapChatEndpoints(database, emailService);
 app.MapLoginEndpoints(database);
