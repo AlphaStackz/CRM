@@ -20,6 +20,7 @@ const Menu = () => {
         if (response.ok) {
             logout();
             navigate("/login");
+            console.log("Logged out...");
         } 
         else {
             console.error("Unable to log in");
